@@ -1,0 +1,313 @@
+
+library(geometry)
+library(lubridate)
+library(zoo)
+library(gtools)
+## function to assign the veriable names ##
+naming <- function(x)
+          {
+            ## removing few columns ####
+            col <- rbind(2,3)
+            for(i in seq(4,83,4))
+            {
+              col <- rbind(col,i)
+            }
+            y <- x[,-col]
+                      
+            ## naming the columns ##
+            names(y) <- c("Date_Time", "Hip_Center_x","Hip_Center_y","Hip_Center_z",
+                           "Spine_x","Spine_y","Spine_z",
+                           "Shoulder_Center_x","Shoulder_Center_y","Shoulder_Center_z",
+                           "Head_x","Head_Y","Head_Z",
+                           "Shoulder_Left_x","Shoulder_Left_y","Shoulder_Left_z",
+                           "Elbow_Left_x","Elbow_Left_y","Elbow_Left_z",
+                           "Wrist_Left_x","Wrist_Left_y","Wrist_Left_z",
+                           "Hand_Left_x","Hand_Left_y","Hand_Left_z",
+                           "Shoulder_Right_x","Shoulder_Right_y","Shoulder_Right_z",
+                           "Elbow_Right_x","Elbow_Right_y","Elbow_Right_z" ,
+                           "Wrist_Right_x","Wrist_Right_y","Wrist_Right_z",
+                           'Hand_Right_x',"Hand_Right_y","Hand_Right_z",
+                           "Hip_Left_x","Hip_Left_y","Hip_Left_z", 
+                           "Knee_Left_x","Knee_Left_y","Knee_Left_z", 
+                           "Ankle_Left_x","Ankle_Left_y","Ankle_Left_z",
+                           "Foot_Left_x","Foot_Left_y","Foot_Left_z", 
+                           "Hip_Right_x","Hip_Right_y","Hip_Right_z", 
+                           "Knee_Right_x","Knee_Right_y","Knee_Right_z",
+                           "Ankle_Right_x","Ankle_Right_y","Ankle_Right_z",
+                           "Foot_Right_x","Foot_Right_y","Foot_Right_z")
+            library(lubridate)
+            y[,1] <- floor_date(ymd_hms(as.character(y[,1])), unit = c("minute"))
+            
+            #y <- cbind(y, session(y))
+            y <- y[,c(1,63,2:62)]
+            
+            return(y)
+          }
+
+
+
+
+## function to assign the day of exercise to the data set ##
+day <- function(x)
+                {
+                  date <- as.character(floor_date(x, unit=c("day")))
+                  day <- data.frame(cbind(Date_Time=unique(date),d=seq(1:length(unique(date)))))
+                  d <- data.frame(Date_Time=date)
+                  fg <- merge(d,day, by="Date_Time")
+                  return(fg$d)
+                }
+
+## function to assign the session in a day ##
+Session<-function(var)
+          {
+            days <- day(var)
+            data <- data.frame(var,days)
+            min<-unique(data)
+            min$diff<-c(0,as.numeric(diff(min[,1],1)))
+            min$Session<-1
+            for( i in 2: nrow(min))
+            {
+              if(min[,2][i]==min[,2][i-1]){
+                if(min$diff[i]<5){min$Session[i]=min$Session[i-1] }
+                else {min$Session[i]=min$Session[i-1]+1 }
+              }
+              else { min$Session[i]=1}
+              
+            }
+            df3<-merge(data,min[,c(1,4)],by.x=names(data)[1],by.y=names(min)[1],all.x=T)
+            return(as.numeric(as.character(df3$Session)))
+          }
+
+
+
+
+library(rgl)
+skeleton_plot <- function(df){
+        for (i in 1:nrow(df)) 
+        {
+                v <- NULL
+                sk <- NULL
+                
+                for (j in seq(2,61,3)) 
+                {
+                        sk <- rbind(sk,as.matrix(df[i,j:(j+2)]))  
+                }
+                
+                #plot the points from the data
+                plot3d(sk[,1], sk[,3], sk[,2], xlim=c(-1,1), ylim = c(1,2), zlim = c(-1,1), 
+                       xlab ='x-values', ylab ="z-values", zlab ="y-values", main = "Structure of the Skeleton",
+                       col="red")## gives the structure of yeton
+                
+                #plot spine - [1 2],[2 3],[3 4]
+                spine     <- c(1, 2, 2, 3, 3, 4)
+                for(j in 1:(length(spine)/2)) 
+                {
+                        x <- c(sk[spine[((2*j)-1)],1],sk[spine[(2*j)],1])
+                        y <- c(sk[spine[((2*j)-1)],2],sk[spine[(2*j)],2])
+                        z <- c(sk[spine[((2*j)-1)],3],sk[spine[(2*j)],3])
+                        lines3d(x,z,y, col=1, lwd=5)
+                }
+                
+                #plot lefthand - [3 5],[5 6],[6 7],[7 8]
+                lefthand  <- c(3, 5, 5, 6, 6, 7, 7, 8) 
+                for(j in 1:(length(lefthand)/2))
+                {
+                        x <- c(sk[lefthand[((2*j)-1)],1],sk[lefthand[(2*j)],1])
+                        y <- c(sk[lefthand[((2*j)-1)],2],sk[lefthand[(2*j)],2])
+                        z <- c(sk[lefthand[((2*j)-1)],3],sk[lefthand[(2*j)],3])
+                        lines3d(x,z,y, col=1, lwd=5)
+                }
+                
+                #plot righthand - [3 9],[9 10],[10 11],[11,12]
+                righthand <- c(3, 9, 9, 10, 10, 11, 11, 12) 
+                for(j in 1:(length(righthand)/2)) 
+                {
+                        x <- c(sk[righthand[((2*j)-1)],1],sk[righthand[(2*j)],1])
+                        y <- c(sk[righthand[((2*j)-1)],2],sk[righthand[(2*j)],2])
+                        z <- c(sk[righthand[((2*j)-1)],3],sk[righthand[(2*j)],3])
+                        lines3d(x,z,y, col=1, lwd=5)
+                }
+                
+                #plot rightleg - [1 17],[17 18],[18 19],[19,20]
+                rightleg  <- c(1, 17, 17, 18, 18, 19, 19, 20)
+                for(j in 1:(length(rightleg)/2))
+                {
+                        x <- c(sk[rightleg[((2*j)-1)],1],sk[rightleg[(2*j)],1])
+                        y <- c(sk[rightleg[((2*j)-1)],2],sk[rightleg[(2*j)],2])
+                        z <- c(sk[rightleg[((2*j)-1)],3],sk[rightleg[(2*j)],3])
+                        lines3d(x,z,y, col=1, lwd=5)
+                }
+                
+                #plot leftleg - [1 13],[13 14],[14 15],[15,16]
+                leftleg   <- c(1, 13, 13, 14, 14, 15, 15, 16)
+                for(j in 1:(length(leftleg)/2))
+                {
+                        x <- c(sk[leftleg[((2*j)-1)],1],sk[leftleg[(2*j)],1])
+                        y <- c(sk[leftleg[((2*j)-1)],2],sk[leftleg[(2*j)],2])
+                        z <- c(sk[leftleg[((2*j)-1)],3],sk[leftleg[(2*j)],3])
+                        lines3d(x,z,y, col=1, lwd=5)
+                }
+        }
+        
+}
+
+
+
+
+## function to find the subsets for each control points ##
+subset_df <- defmacro(data,vector,common, expr= {
+                                          for(i in vector)
+                                          {
+                                            assign(paste(i),data[,c(common,grep(i, names(data)))])
+                                          }
+                                        })
+
+
+## function to find the work space volume by convexhull ##
+WSV <- function(XYZ)
+        {
+          if(nrow(unique(XYZ))<3) return(0) else{
+          return(as.numeric(t(convhulln(XYZ,option="Fa"))[3]))}
+        }
+          
+
+## function to find volume in each minute by convex hull ##
+volume_cp <- function(x,y)
+              {
+                x$Date_Time<-as.character(x$Date_Time)
+                min_count <- aggregate(count~Date_Time, data = x, sum)
+                MinuteV<-unique(as.character(x$Date_Time))
+                WSV_df<-data.frame()
+                for(i in 1:length(MinuteV))
+                {
+                  subset<-x[which(x$Date_Time==MinuteV[i]),]
+                  for (j in 1:length(y))
+                  {
+                    WSV_df[i,j]<-WSV(subset[,grep(upper_limb[j],colnames(subset))])
+                  }
+                }
+                colnames(WSV_df)<-y
+                
+                WSV_df<-data.frame(Date_Time=ymd_hms(MinuteV),No_of_Minutes=min_count[,2],WSV_df)
+                return(WSV_df)
+              }
+ 
+
+## finding other featues as avg, mx and min volume ##
+cp_metric1 <- defmacro(x, expr=
+                {   
+                    Minutes <- aggregate(No_of_Minutes~Session+days, data=x, sum)
+                    avg_vol <- aggregate(.~Session+days, data=x[,-c(3)], mean)
+                    colnames(avg_vol)[3:14] <- paste(colnames(avg_vol)[3:14], "avg_vol", sep="_")
+                    avg_vol$No_of_Minutes <- sapply(Minutes, function(x){ceiling(x/3600)})[,3]
+                    avg_vol <- avg_vol[,c(1,2,15,3:14)]
+                    
+                    max_vol <- aggregate(.~Session+days, data=x[,-c(3)], max)
+                    colnames(max_vol)[3:14] <- paste(colnames(max_vol)[3:14], "max_vol", sep="_")
+                    max_vol$No_of_Minutes <- sapply(Minutes, function(x){ceiling(x/3600)})[,3]
+                    max_vol <- max_vol[,c(1,2,15,3:14)]
+                    
+                    min_vol <- aggregate(.~Session+days, data=x[,-c(3)], min)
+                    colnames(min_vol)[3:14] <- paste(colnames(min_vol)[3:14], "min_vol", sep="_")
+                    min_vol$No_of_Minutes <- sapply(Minutes, function(x){ceiling(x/3600)})[,3]  
+                    min_vol <- min_vol[,c(1,2,15,3:14)]
+                    
+                    Sum_vol <- aggregate(.~Session+days, data=x[,-c(3)], sum)
+                    colnames(Sum_vol)[3:14] <- paste(colnames(Sum_vol)[3:14], "Sum_vol", sep="_")
+                    Sum_vol$No_of_Minutes <- sapply(Minutes, function(x){ceiling(x/3600)})[,3]  
+                    Sum_vol <- Sum_vol[,c(1,2,15,3:14)]
+                    
+                    vol_chg <- NULL
+                    for(i in unique(x$days))
+                    {
+                      mat <- x[which(x$day==i),c(2,4:15)]
+                      for( j in unique(mat$Session))
+                      {
+                        mat1 <- mat[which(mat$Session==j),]
+                        vol_chg <- rbind(vol_chg,apply(mat1[,-1],2,function(y){mean(diff(y,1))}))
+                      }
+                        
+                    }
+                    rm(i,j,mat,mat1)
+                    vol_chg <- cbind(avg_vol[,1:2],vol_chg)
+                    colnames(vol_chg)[3:14] <- paste(colnames(vol_chg)[3:14], "vol_chg", sep="_")
+                    vol_chg$No_of_Minutes <- sapply(Minutes, function(x){ceiling(x/3600)})[,3]
+                    vol_chg <- vol_chg[,c(1,2,15,3:14)]
+                    rm(Minutes)
+                    
+                    total <- data.frame(vol_chg[,1:3])
+                    for(i in 4:15)
+                    {
+                      total <- data.frame(total,avg_vol[,i],min_vol[,i],max_vol[,i],Sum_vol[,i],vol_chg[,i])
+                      colnames(total)[(ncol(total)-4):ncol(total)]=c(colnames(avg_vol)[i],colnames(min_vol)[i],
+                                                                     colnames(max_vol)[i],colnames(Sum_vol)[i],
+                                                                     colnames(vol_chg)[i])
+                      
+                    }
+                   rm(i)
+                })
+
+
+cp_metric <- defmacro(x,expr=
+{                 
+        Minutes <- aggregate(No_of_Minutes~Session+Day, data=x, sum)
+        colnames(Minutes) <- c("Session","Day","No_of_Minutes")
+        
+        
+        avg_vol <- aggregate(.~x$Session+x$Day, data=x[,-c(1:2,15)], mean)
+        colnames(avg_vol)[3:14] <- paste(colnames(avg_vol)[3:14], "avg_vol", sep="_")
+        avg_vol <- cbind(Minutes[,c(2,1,3)],avg_vol[,c(3:14)])
+        
+        
+        max_vol <- aggregate(.~x$Session+x$Day, data=x[,-c(1:2,15)], max)
+        colnames(max_vol)[3:14] <- paste(colnames(max_vol)[3:14], "max_vol", sep="_")
+        max_vol <- cbind(Minutes[,c(2,1,3)],max_vol[,c(3:14)])
+        
+        min_vol <- aggregate(.~x$Session+x$Day, data=x[,-c(1:2,15)], min)
+        colnames(min_vol)[3:14] <- paste(colnames(min_vol)[3:14], "min_vol", sep="_")
+        min_vol <- cbind(Minutes[,c(2,1,3)],min_vol[,c(3:14)])
+        
+        Sum_vol <- aggregate(.~x$Session+x$Day, data=x[,-c(1:2,15)], sum)
+        colnames(Sum_vol)[3:14] <- paste(colnames(Sum_vol)[3:14], "Sum_vol", sep="_")
+        Sum_vol <- cbind(Minutes[,c(2,1,3)],Sum_vol[,c(3:14)])
+        
+        vol_chg <- NULL
+        for(i in unique(x$Day))
+        {
+                mat <- x[which(x$Day==i),-c(15)]
+                for( j in unique(mat$Session))
+                {
+                        mat1 <- mat[which(mat$Session==j),c(3:14)]
+                        vol_chg <- rbind(vol_chg,apply(mat1,2,function(y){mean(diff(y,1))}))
+                }
+                
+        }
+        rm(i,j,mat)
+        vol_chg <- cbind(Minutes[,c(2,1,3)],vol_chg)
+        colnames(vol_chg)[4:15] <- paste(colnames(vol_chg)[4:15], "vol_chg", sep="_")
+        
+        rm(Minutes)
+        
+        total <- data.frame(vol_chg[,1:3])
+        for(i in 4:15)
+        {
+                total <- data.frame(total,avg_vol[,i],min_vol[,i],max_vol[,i],Sum_vol[,i],vol_chg[,i])
+                colnames(total)[(ncol(total)-4):ncol(total)]=c(colnames(avg_vol)[i],colnames(min_vol)[i],
+                                                               colnames(max_vol)[i],colnames(Sum_vol)[i],
+                                                               colnames(vol_chg)[i])
+                
+        }
+        rm(i)
+})
+
+
+## finding distance between each row for displacement ##
+distance <- function(x)
+        {
+                d <- 0
+                for(i in 2:nrow(x))
+                {
+                        d <- rbind(d,dist(x[(i-1:i),]))
+                }
+                return(as.numeric(d))
+        }
