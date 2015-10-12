@@ -1,0 +1,107 @@
+rm(list=(ls(all=T)))
+
+setwd("C:/Users/piu/Desktop/INSOFE/kinect Project/data")
+getwd()
+
+## loading the data ##
+load("Image10L.RData")
+library(geometry)
+library(lubridate)
+library(zoo)
+library(gtools)
+
+source(file="naming2.r")
+
+## naming the data frame ##
+df<-naming(df)
+
+## adding sessions to the data ##
+df<-Session(df)
+
+save.image("df_session.RData")
+
+load("df_session.RData")
+
+## to plot one session of exercise ##
+df_minute <- aggregate(.~Date_Time, df, mean)
+sp <- df_minute[which(df_minute$days==3&df_minute$Session==2),]
+sp <- sp[,-c(2,63,64)]
+sp_min <- aggregate(.~Date_Time, sp, mean)
+skeleton_plot(sp)
+
+## finding volume of each control point in minutes ##
+upper_limb <- c("Head","Hand_Right","Wrist_Right","Elbow_Right",
+                "Shoulder_Right","Shoulder_Center","Spine","Hip_Center",
+                "Shoulder_Left","Elbow_Left","Wrist_Left","Hand_Left")
+
+
+## finding volume of upper_limb control points ##
+WSV_df <- volume_cp(df,upper_limb)
+WSV_df$days <- day(WSV_df[,1],"day")
+WSV_df <- Session(WSV_df)
+WSV_df <- WSV_df[,c(1,15,16,2:14)]
+write.csv(WSV_df,"WSV_df.csv",row.names=F)
+WSV_df <- read.csv("WSV_df.csv", sep=",")
+str(WSV_df)
+WSV_df$Date_Time <- ymd_hms(WSV_df$Date_Time )
+
+
+## getting average, minimun, maximun, sum and rate of change of volume ##
+x <- WSV_df[,-c(1)]
+cp_metric(x)
+save.image("all_metric.Rdata")
+load("all_metric.Rdata")
+write.csv(avg_vol,"avg_vol.csv")
+write.csv(Sum_vol,"sum_vol.csv")
+
+
+## reading all the WSV together ##
+WSV_total <- read.csv("WSV.csv", header=T, sep=",")
+WSV_total[,1] <- paste(WSV_total[,1],":00",sep="")
+head(WSV_total[,1])
+
+## changeing date_time coloumn into standard POSIXct format ##
+y <- strptime(WSV_total[,1],format='%m/%d/%Y %H:%M:%S')
+WSV_total <- data.frame(cbind(Date_Time=y,WSV_total[,2:13]))
+rm(y)
+
+## adding day and sessions to the data ##
+complete_WSV <- data.frame(Date_Time=WSV_total[,1], Day=day(WSV_total$Date_Time), Session=Session(WSV_total[,1]), WSV_total[,-c(1)])
+write.csv(complete_WSV,"complete_WSV.csv")
+save.image("complete_WSV.Rdata")
+
+complete_WSV$No_of_Minutes <- 1
+complete_WSV$Day <- as.numeric(as.character(complete_WSV$Day))
+
+
+cp_metric(complete_WSV[,-c(1)])
+save.image("all_matric.Rdata")
+
+load("all_matric.Rdata")
+
+
+## inter joint coordination on angles ##
+
+angle <- read.csv("data_seconds_wise_29th_December_with_UpperBody_Angles.csv", sep=",")
+names(angle)
+
+angles2 <- angle[,62:72]
+names(angles2)
+
+## PCA ##
+ijc <- princomp(angles2)
+
+ijc$loadings
+summary(ijc)
+plot(ijc, main="Important Eigen Vector")
+ijc$scores
+biplot(ijc)
+
+## correlation plots ##
+library(corrplot)
+angle_corr <- cor(angles2, use="complete.obs")
+
+round(angle_corr, digits=2)
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(angle_corr, method="shade", shade.col=NA, tl.col="black", tl.srt=45,
+         col=col(200), addCoef.col="black", addcolorlabel="no", order="AOE", type="lower")
