@@ -1,0 +1,36 @@
+rm(list=(ls(all=TRUE)))
+second_data_29<-read.csv("data_angles.csv",header=T)
+
+## converting data column as date ##
+library(lubridate)
+second_data_29[,1] <- ymd_hms(as.character(second_data_29[,1]))
+
+
+  
+  library(ggplot2)
+p3<-ggplot(data=second_data_29[-705,],
+       aes(x=seq(1,704,1) , y=RightShoulder_RightElbow_to_RightElbow_RightWritst))+
+  #,shape = paste(MemberID,Medication),color=paste(MemberID,Medication),group = paste(MemberID,Medication)))+
+  ylab("Angle")+
+  xlab("Second")+
+  geom_point(size = 3)+
+  geom_line(size = 1)+
+  scale_color_brewer(palette="Set1")+
+  ggtitle("RightShoulder_RightElbow to RightElbow_RightWritst")+
+  theme_bw()+
+  theme(text=element_text(size=35))
+  
+library(grid)
+vplayout <- function(x, y) viewport(layout.pos.row = x, layout.pos.col = y)
+#integrating
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(2, 2)))
+print(p1, vp = vplayout(1, 1))
+print(p2, vp = vplayout(1, 2))
+print(p3, vp = vplayout(2, 1))
+print(p4, vp = vplayout(2, 2))
+
+plot(second_data_29$Head_ShoulderCenter_to_ShoulderCenter_RightShoulder, type="l")
+plot(second_data_29$ShoulderCenter_RightShoulder_to_RightShoulder_RightElbow, type="l")
+plot(second_data_29$RightShoulder_RightElbow_to_RightElbow_RightWritst, type="l")
+plot(second_data_29$RightElbow_RightWritst_to_RightWritst_RightHand, type="l")
