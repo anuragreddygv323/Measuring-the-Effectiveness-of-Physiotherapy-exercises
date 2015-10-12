@@ -1,0 +1,130 @@
+rm(list=(ls(all=T)))
+
+setwd("C:/Users/piu/Desktop/INSOFE/kinect Project/data")
+getwd()
+
+
+#import the needed libraries
+library(aspace)
+library(lubridate)
+
+load("df_session.RData")
+
+df_minute <- aggregate(.~Date_Time, df, mean)
+sp <- df_minute[which(df_minute$days==3&df_minute$Session==2),]
+sp <- sp[,-c(2,63,64)]
+sp_min <- aggregate(.~Date_Time, sp, mean)
+
+#define a function to calculate the angle betweeen two vectors
+#this has two inputs
+# 1 - a vector containing joints for each segment
+# 2 - a vector containing whether angle is "direct" or "180-direct" 
+#     (Based on sample size, I identified which are direct and which are 180-direct)
+#     (Direct angles are mentioned as "d" in this vector and angles which are 
+#      180-direct are mentioned as "s", signifying subtract)
+
+rtvsegmentangles <- function(controlpointvector,anglecalcvector){
+  anglevec <- NULL
+  cpv <- controlpointvector
+  calc <- anglecalcvector
+  for(idx in 1:(length(controlpointvector)/2 - 1)) {
+    v1 <- as.numeric(c(sk[cpv[(2*idx)-1],1], sk[cpv[(2*idx)-1],2], sk[cpv[(2*idx)-1],3]))
+    v2 <- as.numeric(c(sk[cpv[2*idx],1], sk[cpv[2*idx],2], sk[cpv[2*idx],3]))
+    v3 <- as.numeric(c(sk[cpv[(2*idx)+2],1], sk[cpv[(2*idx)+2],2], sk[cpv[(2*idx)+2],3]))
+    
+    v1_2 <- c(v2[1]-v1[1], v2[2]-v1[2], v2[3]-v1[3])
+    v2_3 <- c(v3[1]-v2[1], v3[2]-v2[2], v3[3]-v2[3])
+    
+    theta <- acos_d((v1_2[1]*v2_3[1] + v1_2[2]*v2_3[2] + v1_2[3]*v2_3[3])/(sqrt((v1_2[1])^2 + (v1_2[2])^2 + (v1_2[3])^2) * sqrt((v2_3[1])^2 + (v2_3[2])^2 + (v2_3[3])^2)))
+    if (calc[idx] == "s") 
+      anglevec[idx] <- 180.00 - theta
+    if (calc[idx] == "d")
+      anglevec[idx] <- theta
+  }
+  return(anglevec)
+}
+
+###segment Name     connection vectors
+#   hip              [1,13],[1,17]
+#   spine            [1 2],[2 3],[3 4]
+#   lefthand         [4,3],[3 5],[5 6],[6 7],[7 8]
+#   righthand        [4,3],[3 9],[9 10],[10 11],[11,12]
+
+
+#iterate through all the rows of data and obtain the vector angles
+for (i in 1:nrow(sp_min)) {
+  
+  v <- NULL
+  sk <- NULL
+  
+  for (j in seq(2,61,3)) 
+  {
+    sk <- rbind(sk,as.matrix(sp_min[i,j:(j+2)]))  
+  }
+  
+  hip   <- c(1, 13, 1, 17)
+  hipcalc <- c('d')
+  segmentangles <- rtvsegmentangles(hip,hipcalc)
+  df[i,62] <- segmentangles
+  rm(hip, hipcalc, segmentangles)
+
+  spine     <- c(1, 2, 2, 3, 3, 4)
+  spinecalc <- c('s', 's')
+  segmentangles <- rtvsegmentangles(spine, spinecalc)
+  df[i,63:64] <- segmentangles
+  rm(spine, spinecalc, segmentangles)
+
+  lefthand  <- c(4, 3, 3, 5, 5, 6, 6, 7, 7, 8) 
+  lhcalc <- c('s', 's', 's', 's')
+  segmentangles <- rtvsegmentangles(lefthand, lhcalc)
+  df[i,65:68] <- segmentangles
+  rm(lefthand, lhcalc, segmentangles)
+  
+  righthand <- c(4, 3, 3, 9, 9, 10, 10, 11, 11, 12) 
+  rhcalc <- c('s', 's', 's', 's')
+  segmentangles <- rtvsegmentangles(righthand, rhcalc)
+  df[i,69:72] <- segmentangles
+  rm(righthand, rhcalc, segmentangles)
+  
+}
+
+write.csv(sp_min,"data_angles.csv",row.names=FALSE)
+ 
+rm(i,j,v,sk,rtvsegmentangles)
+
+#hip angle plot
+plot(sp_min$HipCenter_HipLeft_to_HipCenter_HipRight, type="l")
+
+#spine angles plots
+plot(sp_min$HipCenter_Spine_to_Spine_ShoulderCenter, type="l")
+plot(sp_min$Spine_ShoulderCenter_to_ShoulderCenter_Head, type="l")
+
+#left hand angles plots
+plot(sp_min$Head_ShoulderCenter_to_ShoulderCenter_LeftShoulder, type="l")
+plot(sp_min$ShoulderCenter_LeftShoulder_to_LeftShoulder_LeftElbow, type="l")
+plot(sp_min$LeftShoulder_LeftElbow_to_LeftElbow_LeftWrist, type="l")
+plot(sp_min$LeftElbow_LeftWrist_to_LeftWrist_LeftHand, type="l")
+
+#right hand angles plots
+plot(sp_min$Head_ShoulderCenter_to_ShoulderCenter_RightShoulder, type="l")
+plot(sp_min$ShoulderCenter_RightShoulder_to_RightShoulder_RightElbow, type="l")
+plot(sp_min$RightShoulder_RightElbow_to_RightElbow_RightWrist, type="l")
+plot(sp_min$RightElbow_RightWrist_to_RightWrist_RightHand, type="l")
+
+
+###segment Name     connection vectors
+#   leftleg          [2,1],[1 13],[13 14],[14 15],[15,16]
+#   rightleg         [2,1],[1 17],[17 18],[18 19],[19,20]
+
+
+#leftleg   <- c(2, 1, 1, 13, 13, 14, 14, 15, 15, 16)
+#llcalc <- c('s', s', 's', 'd')
+#segmentangles <- rtvsegmentangles(leftleg,llcalc)
+#data[i,72:75] <- segmentangles
+#rm(leftleg, llcalc, segmentangles)
+
+#rightleg  <- c(2, 1, 1, 17, 17, 18, 18, 19, 19, 20)
+#rlcalc <- c('s', s', 's', 'd')
+#segmentangles <- rtvsegmentangles(rightleg, rlcalc)
+#data[i,76:79] <- segmentangles
+#rm(rightleg, rlcalc, segmentangles)
