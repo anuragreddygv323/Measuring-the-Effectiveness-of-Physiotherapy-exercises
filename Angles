@@ -1,6 +1,6 @@
 rm(list=(ls(all=T)))
 
-setwd("C:/Users/piu/Desktop/INSOFE/kinect Project/data")
+setwd("C:/Users/anurag/Desktop/kinect Project/data")
 getwd()
 
 
