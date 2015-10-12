@@ -1,0 +1,209 @@
+rm(list=(ls(all=T)))
+
+setwd("C:/Users/anurag/Desktop/kinect Project/data")
+getwd()
+
+
+
+library(geometry)
+library(lubridate)
+library(zoo)
+library(gtools)
+library(neuralnet)
+library(dummies)
+library(vegan)
+
+
+##  model building ##
+
+## time series ##
+avg_vol_ts <- ts(avg_vol[,4], frequency=1)
+
+par(mfrow=c(2,3))
+plot.ts(avg_vol_ts, main="Time Series Plot", xlab="Time", ylab="Average Volume")
+acf(avg_vol_ts, type="correlation", main="ACF")
+pacf(avg_vol_ts, main="PACF")
+
+## its randomness ##
+## try moving averages ##
+library(TTR)
+sma_vol <- SMA(avg_vol_ts,n=2)
+ema_vol <- EMA(avg_vol_ts,n=2, wilder=T)
+wma_vol <- WMA(avg_vol_ts,n=2)
+dema_vol <- DEMA(avg_vol_ts,n=2)
+zlema_vol <- ZLEMA(avg_vol_ts,n=2)
+
+plot(avg_vol_ts, main="Prediction Plot", ylab="Average Volume")
+lines(sma_vol, col= "purple")
+lines(ema_vol, col="blue")
+lines(wma_vol, col="green")
+lines(dema_vol, col="red")
+lines(zlema_vol, col="yellow")
+
+par(mfrow=c(1,2))
+plot(avg_vol_ts, main="DEMA Prediction", ylab="Average Volume")
+
+sma_vol[1] <- avg_vol_ts[1]
+wma_vol[1] <- avg_vol_ts[1]
+ema_vol[1] <- avg_vol_ts[1]
+dema_vol[1] <- avg_vol_ts[1]
+dema_vol[2] <- avg_vol_ts[2]
+zlema_vol[1] <- avg_vol_ts[1]
+
+library(DMwR)
+ts.eval(avg_vol_ts,sma_vol)
+ts.eval(avg_vol_ts,wma_vol)
+ts.eval(avg_vol_ts,ema_vol)
+ts.eval(avg_vol_ts,dema_vol)
+ts.eval(avg_vol_ts,zlema_vol)
+
+#dema_vol is the best
+
+data <- data.frame(actual=avg_vol_ts,pred=dema_vol)
+write.csv(data,"ema_pred.csv")
+
+library(ggplot2)
+ggplot() +
+        geom_line(aes(x = seq(1,28),y = actual),data=data) +
+        geom_line(aes(x = seq(1,28),y = pred),data=data,colour = 'red') +
+        theme(text=element_text(size=22), plot.title = element_text(size = 30.0)) +
+        theme_bw() +
+        ggtitle(label = 'EMA Predictions') +
+        xlab(label = 'Sessions') +
+        ylab(label = 'Average Volume')
+
+
+
+## calculating Errors ##
+library(DMwR)
+error_met <- data.frame(ts_error =ts.eval(avg_vol_ts,dema_vol))
+error_met$ts_error_P[1] <- error_met[1,1]/mean(avg_vol_ts)*100
+error_met$ts_error_P[2] <- error_met[2,1]/mean((avg_vol_ts)^2)*100
+error_met$ts_error_P[3] <- error_met[3,1]/mean(avg_vol_ts)*100
+error_met$ts_error_P[4] <- NA
+
+
+## Linear Regression ## on elbow_left
+train <- avg_vol[(11:20),]
+test <- avg_vol[(21:28),]
+
+lm1 <- lm(train$Wrist_Left_avg_vol~poly(Session,2)+poly(Day,3)+poly(No_of_Minutes,3), train)
+summary(lm1)
+plot(lm1)
+
+data_lm <- data.frame(actual=train$Wrist_Left_avg_vol, pred=lm1[5])
+sd(lm1$residuals)
+mean(lm1$residuals)
+median(lm1$residuals)
+
+## plot ##
+library(ggplot2)
+ggplot() +
+        geom_line(aes(x = seq(1,10),y = actual),data=data_lm) +
+        geom_line(aes(x = seq(1,10),y = fitted.values),data=data_lm,colour = 'red') +
+        theme(text=element_text(size=22), plot.title = element_text(size = 30.0)) +
+        theme_bw() +
+        ggtitle(label= "Linear Regression") +
+        xlab(label = 'Sessions') +
+        ylab(label = 'Average Volume')
+
+## error ##
+ts.eval(data_lm[1],data_lm[2])
+
+error_met$lm_error <- ts.eval(data_lm[1],data_lm[2])
+error_met$lm_error_P[1] <- error_met[1,4]/mean(data_lm[1])*100
+error_met$lm_error_P[2] <- error_met[2,4]/mean((data_lm[1])^2)*100
+error_met$lm_error_P[3] <- error_met[3,4]/mean(data_lm[1])*100
+error_met$lm_error_P[4] <- error_met[4,4]/mean(data_lm[1])*100
+
+
+## Arimax ##
+my_data <- avg_vol[,c("Day","Session","No_of_Minutes", "Wrist_Left_avg_vol")]
+my_data$lag1 <- c(rep(0,1),lag(as.zoo(my_data$Wrist_Left_avg_vol),k=-1))
+my_data$lag2 <- c(rep(0,2),lag(as.zoo(my_data$Wrist_Left_avg_vol),k=-2))
+my_data$lag3 <- c(rep(0,3),lag(as.zoo(my_data$Wrist_Left_avg_vol),k=-3))
+
+## linear regression ##
+lm2 <- lm1 <- lm(my_data$Wrist_Left_avg_vol~poly(Session,3)+poly(Day,2)+poly(No_of_Minutes,4)+lag1+lag2+lag3, my_data)
+summary(lm2)
+
+## Creating lagged data ##
+
+my_data <- avg_vol[,c("Day","Session","No_of_Minutes", "Wrist_Left_avg_vol")]
+my_data$lag1 <- c(rep(0,1),lag(as.zoo(my_data$Wrist_Left_avg_vol),k=-1))
+my_data$lag2 <- c(rep(0,2),lag(as.zoo(my_data$Wrist_Left_avg_vol),k=-2))
+my_data$lag3 <- c(rep(0,3),lag(as.zoo(my_data$Wrist_Left_avg_vol),k=-3))
+my_data$ts <- DEMA(ts(avg_vol$Wrist_Left_avg_vol),n=2)
+my_data$ts[1:2] <- avg_vol$Wrist_Left_avg_vol[1:2]
+
+## Decision Tree ##
+set.seed(123)
+library(rpart)
+dtCart=rpart(Wrist_Left_avg_vol ~.,data=my_data, method="anova")
+plot(dtCart,main="Classification Tree for Income",margin=0.15,uniform=TRUE)
+text(dtCart,use.n=T)
+
+predCartTrain=predict(dtCart,newdata=my_data, type="vector")
+## error ##
+
+mse <- mean((my_data$Wrist_Left_avg_vol-predCartTrain)^2)
+rmse <- sqrt(mean((my_data$Wrist_Left_avg_vol-predCartTrain)^2))
+mae <- mean(abs(my_data$Wrist_Left_avg_vol-predCartTrain))
+error_met$dt_error <- c(mae,mse,rmse,NA)
+error_met$dt_error_P[1] <- error_met[1,3]/mean(my_data$Wrist_Left_avg_vol)*100
+error_met$dt_error_P[2] <- error_met[2,3]/mean((out[,7])^2)*100
+error_met$dt_error_P[3] <- error_met[3,3]/mean(out[,7])*100
+error_met$dt_error_P[4] <- error_met[4,3]/mean(out[,7])*100
+
+
+## plotting Decision tree prediction ##
+ggplot() +
+        geom_line(aes(x = seq(1,28),y = my_data$Wrist_Left_avg_vol),data=my_data) +
+        geom_line(aes(x = seq(1,28),y = predCartTrain),colour = 'red') +
+        theme(text=element_text(size=22), plot.title = element_text(size = 30.0)) +
+        theme_bw() +
+        ggtitle(label = 'Decision Tree Predictions') +
+        xlab(label = 'Sessions') +
+        ylab(label = 'Average Volume')
+
+
+### Neural Network ##
+set.seed(123)
+nn=neuralnet(my_data$Wrist_Left_avg_vol~Session+Day+No_of_Minutes+lag1+lag2+lag3, my_data,hidden=c(4,4))
+plot(nn)
+summary(nn)
+nn
+
+out <- data.frame(cbind(nn$covariate,my_data[,c("Wrist_Left_avg_vol")],nn$net.result[[1]]))
+colnames(out) = c ("Session","Day","No_of_Minutes", "lag1","lag2", "lag3", "Wrist_Left_avg_vol", "nn-output")
+head(out)
+nn
+
+## errors ##
+mse <- mean((out[,7]-out[,8])^2)
+rmse <- sqrt(mean((out[,7]-out[,8])^2))
+mae <- mean(abs(out[,7]-out[,8]))
+error_met$nn_error <- c(mae,mse,rmse,NA)
+error_met$nn_error_P[1] <- error_met[1,"nn_error"]/mean(out$Wrist_Left_avg_vol)*100
+error_met$nn_error_P[2] <- error_met[2,"nn_error"]/mean((out[,7])^2)*100
+error_met$nn_error_P[3] <- error_met[3,"nn_error"]/mean(out[,7])*100
+error_met$nn_error_P[4] <- error_met[4,"nn_error"]/mean(out[,7])*100
+
+error_met <- error_met[,c(1,2,3,6,4,5)]
+
+error_met$ts_error_P <- round(error_met$ts_error_P, digits=2)
+error_met$dt_error_P <- round(error_met$dt_error_P, digits=2)
+error_met$nn_error_P <- round(error_met$nn_error_P, digits=2)
+
+## plotting ANN prediction ##
+
+ggplot() +
+        geom_line(aes(x = seq(1,28),y = out[,7]),data=out) +
+        geom_line(aes(x = seq(1,28),y = out[,8]),data=out,colour = 'red') +
+        theme(text=element_text(size=22), plot.title = element_text(size = 30.0)) +
+        theme_bw() +
+        ggtitle(label = 'Neural Net Predictions') +
+        xlab(label = 'Sessions') +
+        ylab(label = 'Average Volume')
+
+write.csv(error_met, "error_met.csv")
