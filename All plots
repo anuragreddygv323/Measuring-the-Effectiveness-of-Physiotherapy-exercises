@@ -1,0 +1,231 @@
+rm(list=(ls(all=T)))
+
+setwd("C:/Users/piu/Desktop/INSOFE/kinect Project/data")
+
+library(ggplot2)
+
+load("complete_WSV.Rdata")
+load("all_metric.Rdata")
+save.image("all_metric.Rdata")
+
+## getting no of minutes ##
+
+complete_WSV$No_of_Minutes <- 1
+complete_WSV$Day <- as.numeric(as.character(complete_WSV$Day))
+complete_WSV$Session <- as.numeric(as.character(complete_WSV$Session))
+Minutes <- aggregate(No_of_Minutes~Session+Day, data=complete_WSV, sum)
+colnames(Minutes) <- c("Session","Day","No_of_Minutes")
+Minutes$x <- paste(Minutes$Day,Minutes$Session,sep="-")
+min_refined <- Minutes[which(Minutes$No_of_Minutes>28),]
+
+
+save.image("all_matric.Rdata")
+load("all_matric.Rdata")
+## No.of minutes plots ##
+ggplot(data=Minutes,aes(x=seq(1,nrow(Minutes)), y=No_of_Minutes))+
+        geom_point(size = 4)+
+        geom_line(size = 0.75)+
+        xlab("Day-Session")+
+        ylab("Time in Hours")+
+        scale_color_brewer(palette="Set1")+
+        theme_bw()+
+        ggtitle("Time spend each Day & Session")+
+        scale_x_continuous(breaks=seq(1,nrow(Minutes)),labels=Minutes$x[seq(1,nrow(Minutes))])+
+        scale_y_continuous(breaks=seq(0,max(Minutes$No_of_Minutes),30),labels=c("0", "0.5","1","1.5","2"))+
+        theme(text=element_text(size=22), plot.title = element_text(size = 30.0))
+
+
+## minutes refined ##
+ggplot(data=min_refined,aes(x=seq(1,nrow(min_refined)), y=No_of_Minutes))+
+        geom_point(size = 4)+
+        geom_line(size = 0.75)+
+        xlab("Day-Session")+
+        ylab("Time in Hours")+
+        scale_color_brewer(palette="Set1")+
+        theme_bw()+
+        ggtitle("Time spend each Day & Session")+
+        scale_x_continuous(breaks=seq(1,nrow(min_refined)),labels=min_refined$x[seq(1,nrow(min_refined))])+
+        scale_y_continuous(breaks=seq(0,max(min_refined$No_of_Minutes),30),labels=c("0", "0.5","1","1.5","2"))+
+        theme(text=element_text(size=22), plot.title = element_text(size = 30.0))
+
+corrplot(avg_vol[,4:15],
+         method = c("color"),
+         type = c("upper"),
+         col = NULL, bg = "white", title = "Plot",  is.corr = TRUE,        	
+         diag = TRUE,
+         order = c("hclust"),
+         hclust.method = c("complete"),
+         addrect = NULL, rect.col = "black", rect.lwd = 2)
+
+corrplot(avg_vol[,4:15])
+
+## WSV for 3rd day ##
+day3 <- complete_WSV[which(complete_WSV$Day==3),]
+day3$time <- substr(day3$Date_Time, start=12, stop=16)
+day3_s1 <- day3[which(day3$Session==1),]
+day3_s2 <- day3[which(day3$Session==2),]
+day3_s3 <- day3[which(day3$Session==3),]
+day3_s4 <- day3[which(day3$Session==4),]
+
+
+
+## day 3 volume session 1 ##
+ggplot(data=day3_s1, aes(x = seq(1,nrow(day3_s1)),y = Wrist_Left)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 20.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 20.0)) +
+        ylab(label = 'Volume') +
+        xlab(label = 'Minutes') +
+        scale_x_continuous(breaks=seq(1,nrow(day3_s1),2), labels=day3_s1$time[seq(1,nrow(day3_s1),2)])+
+        ggtitle(label = 'Work Space Volume (Session 1)')
+
+## day 3 volume session 2 ##
+
+ggplot(data=day3_s2, aes(x = seq(1,nrow(day3_s2)),y = Wrist_Left)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 20.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 20.0)) +
+        ylab(label = 'Volume') +
+        xlab(label = 'Minutes') +
+        scale_x_continuous(breaks=seq(1,nrow(day3_s2),10), labels=day3_s2$time[seq(1,nrow(day3_s2),10)])+
+        ggtitle(label = 'Work Space Volume (Session 2)')
+
+## day 3 volume session 3 ##
+
+ggplot(data=day3_s3, aes(x = seq(1,nrow(day3_s3)),y = Wrist_Left)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 20.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 20.0)) +
+        ylab(label = 'Volume') +
+        xlab(label = 'Minutes') +
+        scale_x_continuous(breaks=seq(1,nrow(day3_s3),20), labels=day3_s3$time[seq(1,nrow(day3_s3),20)])+
+        ggtitle(label = 'Work Space Volume (Session 3)')
+
+## day 3 volume session 4 ##
+
+ggplot(data=day3_s4, aes(x = seq(1,nrow(day3_s4)),y = Wrist_Left)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 20.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 20.0)) +
+        ylab(label = 'Volume') +
+        xlab(label = 'Minutes') +
+        scale_x_continuous(breaks=seq(1,nrow(day3_s4),10), labels=day3_s4$time[seq(1,nrow(day3_s4),10)])+
+        ggtitle(label = 'Work Space Volume (Session 4)')
+
+
+## velocity ##
+
+distt <- read.csv("day3_velocity_sec.csv", sep=",")
+vel <- aggregate(velocity~minute+hour, distt,sum)
+distt
+
+## plotting velocity ##
+
+## day3 velocity session 1##
+ggplot(data=vel[which(vel$hour==1),], aes(x = minute,y = velocity)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 18.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 18.0)) +
+        ylab(label = "Velocity in meter/min") +
+        xlab(label = "Minutes") +
+        scale_x_continuous(breaks=seq(1,7,2),labels=c("03:52" ,"03:54" ,"03:56" ,"03:58"))+
+        ggtitle(label = 'Velocity (Session 1)')
+
+
+## day3 velocity session 2##
+ggplot(data=vel[which(vel$hour==2),], aes(x = minute,y = velocity,group = hour)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        ylim(0,6)+
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 18.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 18.0)) +
+        ylab(label = "Velocity in meter/min") +
+        xlab(label = "Minutes") +
+        scale_x_continuous(breaks=seq(1,45,10),labels=vel[which(vel$hour==2),]$time[seq(1,45,10)])+
+        ggtitle(label = 'Velocity (Session 2)')
+
+## day3 velocity session 3##
+ggplot(data=vel[which(vel$hour==3),], aes(x = minute,y = velocity,group = hour)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        ylim(0,6)+
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 18.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 18.0)) +
+        ylab(label = "Velocity in meter/min") +
+        xlab(label = "Minutes") +
+        scale_x_continuous(breaks=seq(1,48,10),labels=vel[which(vel$hour==3),]$time[seq(1,48,10)])+
+        ggtitle(label = 'Velocity (Session 3)')
+
+## day3 velocity session 4##
+ggplot(data=vel[which(vel$hour==4),], aes(x = minute,y = velocity,group = hour)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        ylim(0,6)+
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 18.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 18.0)) +
+        ylab(label = "Velocity in meter/min") +
+        xlab(label = "Minutes") +
+        scale_x_continuous(breaks=seq(1,53,10),labels=vel[which(vel$hour==4),]$time[seq(1,53,10)])+
+        ggtitle(label = 'Velocity (Session 4)')
+
+## acceleration ##
+
+day3_acc <- read.csv("acceleration_day2_min.csv", sep=",")
+day3_acc <- day3_acc[1:153,]
+day3_acc$time <- day3$time
+x <- day3_acc
+x$label <- round(x$acceleration*10^19,digit=2)
+write.csv(x,"acc_day2.csv")
+
+ggplot(data=x[which(day3_acc$hour==2),], aes(x = X,y = acceleration)) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),
+              axis.title = element_text(),
+              axis.text = element_text(size = 18.0),
+              axis.title.x = element_text(size = 18.0),
+              axis.text.x = element_text(),axis.title.y = 
+                      element_text(size = 18.0)) +
+        #ylab(label = "Acceleration meters/min (in 10e-19)") +
+        #xlab(label = "Minutes") +
+        scale_y_continuous(breaks=seq(min(x$acceleration),max(x$acceleration),10),
+                           labels=x[which(x$hour==2),]$label[seq(min(x$acceleration),
+                                                                 max(x$acceleration),10)])+
+        scale_x_continuous(breaks=seq(1,45,10),
+                           labels=day3_acc[which(day3_acc$hour==2),]$time[seq(1,45,10)])+
+        ggtitle(label = 'Acceleration (Session 2)')
+
+
+ggplot(data=x[1:47,], aes(x = X[1:47],y = acceleration[1:47])) +
+        geom_line(size=1) +
+        geom_point(size=4) +
+        theme_bw() +
+        theme(plot.title = element_text(size = 22.0),axis.title = element_text(),
+              axis.text = element_text(size = 18.0),axis.title.x = element_text(size = 18.0),
+              axis.text.x = element_text(),axis.title.y = element_text(size = 18.0)) +
+        ylab(label = "Acceleration in meters/min") +
+        xlab(label = "Minutes") +
+        scale_x_continuous(breaks=seq(1,47,10),labels=day3_acc[which(day3_acc$hour==3),]$time[seq(1,47,10)])+
+        ggtitle(label = 'Acceleration (Session 3)')
